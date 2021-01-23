@@ -1,8 +1,39 @@
-/*
- *
- * 
- * @author, Sean Siders, sean.siders@icloud.com
- */
+/* 
+This file contains an implementation of a linear linked list template.
+Underlying data in this list is deep copied onto the stack, following
+the conventions of data abstraction.
+
+*** PUBLIC INTERFACE
+
+display     : display all data in the list
+insertFront : insert at the front of the list 
+insertBack  : insert at the back of the list
+insertAt    : insert data at a specified location
+removeAt    : remove data at a specified location
+remove      : remove all data that matches a provided key of type |K|
+retrieve    : retrieve all data that matches a provided key of type |K|
+clear       : removal all data from the list
+isEmpty     : check if the list is empty
+getLength   : get the number of items in the list
+
+*** LIST OPERATOR OVERLOADS
+
+==  | Determine if two lists contain the same data in the same order
+=   | Make a new copy of the list (no shared memory)
+<<  | Display the entire list
+
+*** CLIENT REQUIRED OPERATOR OVERLOADS
+
+The following operator overloads must be implemented for user-defined datatypes
+that are managed by this list.
+
+==  |  Comparison with key (of type K) for retrieval / removal
+<   |  Sorted insert LLL                   
+=   |  Deep copy : insert / retrieve 
+<<  |  Inserting stream to specified ostream  : display
+
+@author, Sean Siders, sean.siders@icloud.com
+*/
 
 #ifndef LIST_HPP
 #define LIST_HPP
@@ -13,9 +44,9 @@ namespace lll {
 
 ////////////////////////////// NODE
 
-/* This node abstraction manages the underlying data of the linear linked list.
- * Data is deep copied into dynamic memory.
- * All operations such as display, comparison, and copying out are handled here.
+/* This node abstraction manages the underlying data of the linear linked list
+ * Data is deep copied into dynamic memory
+ * All operations such as display, comparison, and copying out are handled here
  */
 
 template <typename T>
@@ -102,10 +133,26 @@ class Node
     T* data;
 };
 
-////////////////////////////// LIST
+////////////////////////////// LINEAR LINKED LIST
 
 template <typename T>
-class List
+class BaseList
+{
+    public:
+
+    //////////////// CONSTRUCTORS
+    //////////////// DESTRUCTOR 
+    //////////////// PUBLIC FUNCTIONS 
+
+    protected:
+
+    //////////////// DATA 
+
+    //////////////// PRIVATE FUNCTIONS 
+};
+
+template <typename T>
+class List : public BaseList<T>
 {
     public:
 
@@ -113,9 +160,29 @@ class List
 
     List() : head(nullptr), tail(nullptr), length(0) {}
 
+    List(const List& source) : head(nullptr), tail(nullptr), length(0)
+    {
+        *this = source;
+    }
+
     //////////////// DESTRUCTOR 
 
     ~List() { clear(); }
+
+    //////////////// OPERATOR OVERLOADS
+
+    //Makes a complete deep copy of |rhs| into this list
+    List& operator=(const List& rhs)
+    {
+        //If this is not self assignment, or |rhs| is not empty
+        if (this != &rhs && rhs.head)
+        {
+            copy(head, tail, rhs.head, rhs.tail);
+            length = rhs.length;
+        }
+
+        return *this;
+    }
 
     //////////////// PUBLIC FUNCTIONS 
 
@@ -269,6 +336,24 @@ class List
     
     //////////////// PRIVATE FUNCTIONS 
 
+    //Deep copy |source| into this list with |head|
+    void copy(Node<T>*& head, Node<T>*& tail, Node<T>* srcHead, Node<T>* srcTail)
+    {
+        //Allocate and copy over data
+        head = new Node<T>(*srcHead->_data());
+
+        //If this is the tail of |source|
+        if (srcHead == srcTail)
+        {
+            //Assign tail, and exit
+            tail = head;
+            return;
+        }
+
+        copy(head->_next(), tail, srcHead->_next(), srcTail);
+    }
+
+    //Traverse with |head| displaying the entire list
     size_t display(std::ostream& out, Node<T>* head) const
     {
         //Display node data 
@@ -458,6 +543,6 @@ class List
     }
 };
 
-} // END LLL NAMESPACE
+}
 
-#endif
+#endif //LIST_HPP

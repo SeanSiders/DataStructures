@@ -1,8 +1,18 @@
-#ifndef LIST_HPP
-#define LIST_HPP
+/*
+ *
+ * 
+ * @author, Sean Siders, sean.siders@icloud.com
+ */
 
 #include <iostream>
 #include <memory>
+
+#ifndef LIST_HPP
+#define LIST_HPP
+
+namespace plll {
+
+////////////////////////////// NODE
 
 template<typename T>
 struct Node
@@ -20,6 +30,7 @@ struct Node
     }
 };
 
+////////////////////////////// PERSISTENT LINEAR LINKED LIST 
 
 template<typename T>
 class List
@@ -29,10 +40,9 @@ class List
 
     public:
         
-        /**
-         * A lambda function defined by the client will be used to
-         * operate on every item in the list.
-         */
+         //////////////// MAP FUNCTION 
+
+         //A lambda function defined by the client will be used to operate on every item in the list
          template <typename R>
          List<R> map(R (*f)(const T&)) const
          {
@@ -44,62 +54,53 @@ class List
              return new_list;
          }
 
-        /**
-         * Creates an empty list.
-         */
+        //////////////// CONSTRUCTORS
+
+        //Creates an empty list
         List() : list_length(0) {}
 
-        /**
-         * Creates a list with a single element whose value is |data|.
-         */
+        //Creates a list with a single element whose value is |data|
         explicit List(const T& data) : head(std::make_shared<Node<T>>(data)), tail(head), list_length(1) {}
 
-        /**
-         * Sets all pointers to null, delegating memory frees to std::shared_ptr.
-         */
+        //////////////// DESTRUCTOR 
+
+        //Sets all pointers to null, delegating memory frees to std::shared_ptr
         ~List()
         {
             head = nullptr;
             tail = nullptr;
         }
-        /**
-         * Returns the number of elements in the list.
-         */
+
+        //////////////// PUBLIC FUNCTIONS 
+
+        //Returns the number of elements in the list
         size_t length() const
         {
             return list_length;
         }
 
-        /**
-         * True if the list is empty, otherwise false.
-         */
+        //True if the list is empty, otherwise false
         bool is_empty() const
         {
             return !list_length;
         }
 
-        /**
-         * Returns the first element in the list.
-         * Returns nullptr if the list is empty.
-         */
+        //Returns the first element in the list
+        //Returns nullptr if the list is empty
         std::shared_ptr<const T> first() const
         {
             return head ? head->_data : nullptr;
         }
 
-        /**
-         * Returns the last element in the list.
-         * Returns nullptr if the list is empty.
-         */
+        //Returns the last element in the list
+        //Returns nullptr if the list is empty
         std::shared_ptr<const T> last() const
         {
             return tail ? tail->_data : nullptr;
         }
 
-        /**
-         * Returns the nth element in the list.
-         * Returns nullptr if |n| is out of bounds.
-         */
+        //Returns the nth element in the list
+        //Returns nullptr if |n| is out of bounds
         std::shared_ptr<const T> nth(size_t n) const
         {
             if (is_empty() || n < 0 || n > list_length - 1) return nullptr;
@@ -111,9 +112,7 @@ class List
             return current->_data;
         }
 
-        /**
-         * Pushes a new element containing |data| to the back of the list.
-         */
+        //Pushes a new element containing |data| to the back of the list
         List<T> push_back(const T& data) const
         {
             if (is_empty()) return List(data);
@@ -130,9 +129,7 @@ class List
             return new_list;
         }
 
-        /**
-         * Pushes a new element containing |data| to the front of the list.
-         */
+        //Pushes a new element containing |data| to the front of the list
         List<T> push_front(const T& data) const
         {
             if (is_empty()) return List(data);
@@ -148,11 +145,8 @@ class List
             return new_list;
         }
 
-        /**
-         * Inserts |data| at |index| location in the list.
-         * If index is larger than the list's size, then |data| will
-         * be pushed to the back of the list.
-         */
+        //Inserts |data| at |index| location in the list
+        //If index is larger than the list's size, then |data| will be pushed to the back of the list
         List<T> insert_at(size_t index, const T& data) const
         {
             //index is out of bounds
@@ -178,9 +172,9 @@ class List
         }
 
         /**
-         * Removes the data at |index| in the list.
+         * Removes the data at |index| in the list
          * If the list does not have an element that corresponds
-         * to |index| then nothing will happen.
+         * to |index| then nothing will happen
          */
         List<T> remove_at(size_t index) const
         {
@@ -223,9 +217,7 @@ class List
             return new_list;
         }
 
-        /**
-         * Displays relevant debug information for the list.
-         */
+        //Displays relevant debug information for the list
         void debug_info(const char* name = "list") const
         {
               std::cout << name << " { " << std::endl;
@@ -242,39 +234,37 @@ class List
         }
 
     private:
+
+        //////////////// DATA 
+
         //front of the list
         std::shared_ptr<Node<T>> head;
+
         //end of the list
         std::shared_ptr<Node<T>> tail;
 
         //the number of nodes currently in the list
-        size_t list_length = 0;
+        size_t list_length;
 
-        /**
-         * Makes a new list with a single node at the value |data|.
-         */
-         explicit List(std::shared_ptr<T>& data) : head(std::make_shared<Node<T>>(data)), tail(head), list_length(1) {}
+        //////////////// PRIVATE FUNCTIONS 
 
-        /**
-         * Allocate a new node with |data| at the end of the list.
-         */
+        //Makes a new list with a single node at the value |data|.
+        explicit List(std::shared_ptr<T>& data) : head(std::make_shared<Node<T>>(data)), tail(head), list_length(1) {}
+
+        //Allocate a new node with |data| at the end of the list.
         void grow_tail(std::shared_ptr<T> data) 
         {
             tail->_next = std::make_shared<Node<T>>(data);
             tail = tail->_next;
         }
 
-        /**
-         * Assign |list_length| a new specified value
-         */
+        //Assign |list_length| a new specified value
         void set_length(const size_t length) { list_length = length; }
 
-        /**
-         * Make a copy of the nodes from |source| in the current list up to |index|.
-         * The nodes will still share the underlying data's memory.
-         * If the index is out of bounds, the entire list will be duplicated.
-         * Return the node that follows all duplications, which could be null.
-         */
+        //Make a copy of the nodes from |source| in the current list up to |index|.
+        //The nodes will still share the underlying data's memory.
+        //If the index is out of bounds, the entire list will be duplicated.
+        //Return the node that follows all duplications, which could be null.
         static std::shared_ptr<Node<T>> duplicate_nodes(List& new_list, std::shared_ptr<Node<T>> source, const size_t index)
         {
             for (int i = 0; i < index; ++i)
@@ -286,5 +276,7 @@ class List
             return source;
         }
 };
+
+}
 
 #endif //LIST_HPP
