@@ -49,6 +49,9 @@ that are managed by this list.
 
 namespace lll {
 
+template <typename T>
+class SortedList;
+
 ////////////////////////////// NODE
 
 /* This node abstraction manages the underlying data of the linear linked list
@@ -162,6 +165,7 @@ class BaseList
 
     //////////////// OPERATOR OVERLOADS
 
+    /*
     //Makes a complete deep copy of |rhs| into this list
     BaseList& operator=(const BaseList& rhs)
     {
@@ -174,6 +178,7 @@ class BaseList
 
         return *this;
     }
+    */
 
     //////////////// PURE FUNCTION
 
@@ -277,21 +282,31 @@ class BaseList
     
     //////////////// PRIVATE FUNCTIONS 
 
+    //WRAPPER
+    //Check if a list already exists, if so, deallocate before recursive copy
+    void copy(Node<T>* sourceHead, Node<T>* sourceTail)
+    {
+        if (head) clear();
+
+        copy(head, tail, sourceHead, sourceTail);
+    }
+
     //Deep copy |source| into this list with |head|
-    void copy(Node<T>*& head, Node<T>*& tail, Node<T>* srcHead, Node<T>* srcTail)
+    //Effiency will always be O(N) : N = (length of source list)
+    void copy(Node<T>*& head, Node<T>*& tail, Node<T>* sourceHead, Node<T>* sourceTail)
     {
         //Allocate and copy over data
-        head = new Node<T>(*srcHead->_data());
+        head = new Node<T>(*sourceHead->_data());
 
         //If this is the tail of |source|
-        if (srcHead == srcTail)
+        if (sourceHead == sourceTail)
         {
             //Assign tail, and exit
             tail = head;
             return;
         }
 
-        copy(head->_next(), tail, srcHead->_next(), srcTail);
+        copy(head->_next(), tail, sourceHead->_next(), sourceTail);
     }
 
     //Traverse with |head| displaying the entire list
@@ -465,12 +480,39 @@ class BaseList
 template <typename T>
 class List : public BaseList<T>
 {
+    friend SortedList<T>;
+
     public:
 
     //////////////// CONSTRUCTORS
 
     List() {}
-    List(const BaseList<T>& source) : BaseList<T>(source) {}
+
+    List(const List& source)
+    {
+        *this = source;
+    }
+
+    //Makes a complete deep copy of |rhs| into this list
+    List& operator=(const List& rhs)
+    {
+        //If this is not self assignment, or |rhs| is not empty
+        if (this != &rhs && rhs.head)
+        {
+            BaseList<T>::copy(rhs.head, rhs.tail);
+            this->listLength = rhs.listLength;
+        }
+
+        return *this;
+    }
+
+    List& operator=(const SortedList<T>& rhs)
+    {
+        BaseList<T>::copy(rhs.head, rhs.tail);
+        this->listLength = rhs.listLength;
+
+        return *this;
+    }
 
     //////////////// PUBLIC FUNCTIONS 
 
@@ -565,16 +607,57 @@ class List : public BaseList<T>
 
 ////////////////////////////// SORTED LINEAR LINKED LIST 
 //This list will automatically sort incoming data from least at |head| to greatest at |tail|
+//Assigning any other type of list to a list of this type will still result in a sorted LLL
 
 template <typename T>
 class SortedList : public BaseList<T>
 {
+    friend List<T>;
+
     public:
 
     //////////////// CONSTRUCTORS
 
     SortedList() {}
-    SortedList(const BaseList<T>& source) : BaseList<T>(source) {}
+
+    SortedList(const SortedList& source)
+    {
+        *this = source;
+    }
+
+    SortedList(const List<T>& source)
+    {
+        *this = source;
+    }
+
+    //////////////// OPERATOR OVERLOADS
+
+    //Assigning a |List| to |SortedList| will result in a sorted list
+    //Worst case scenario of efficiency : O(N log N)
+    SortedList& operator=(const List<T>& rhs)
+    {
+        if (this->head) BaseList<T>::clear();
+
+        sortedCopy(rhs.head);
+        this->listLength = rhs.listLength;
+
+        return *this;
+    }
+
+    //Makes a complete deep copy of |rhs| into this list
+    SortedList& operator=(const SortedList& rhs)
+    {
+        //If this is not self assignment, or |rhs| is not empty
+        if (this != &rhs && rhs.head)
+        {
+            //Non-sorted copy algorithm for O(N) performance
+            //Since |rhs| is guaranteed to be sorted
+            BaseList<T>::copy(rhs.head, rhs.tail);
+            this->listLength = rhs.listLength;
+        }
+
+        return *this;
+    }
 
     //////////////// PUBLIC FUNCTIONS 
 
@@ -617,6 +700,19 @@ class SortedList : public BaseList<T>
         }
 
         return insert(data, head->_next()) + 1;
+    }
+
+    //Deep copy |source| into this list with |head|
+    //This will always result in the list being sorted, regardless of list input
+    void sortedCopy(Node<T>* sourceHead)
+    {
+        //End of the source list
+        if (!sourceHead) return;
+
+        //Copy data into the sorted insert algorithm
+        insert(*sourceHead->_data(), this->head);
+
+        sortedCopy(sourceHead->_next());
     }
 };
 
