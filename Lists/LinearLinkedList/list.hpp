@@ -6,15 +6,22 @@ the conventions of data abstraction.
 *** PUBLIC INTERFACE
 
 display     : display all data in the list
-insertFront : insert at the front of the list 
-insertBack  : insert at the back of the list
-insertAt    : insert data at a specified location
 removeAt    : remove data at a specified location
 remove      : remove all data that matches a provided key of type |K|
 retrieve    : retrieve all data that matches a provided key of type |K|
 clear       : removal all data from the list
 isEmpty     : check if the list is empty
-getLength   : get the number of items in the list
+length   : get the number of items in the list
+
+*** STANDARD LLL INTERFACE
+
+insertFront : insert at the front of the list 
+insertBack  : insert at the back of the list
+insertAt    : insert data at a specified location
+
+*** SORTED LLL INTERFACE
+
+insert      : insert the data in its respective sorted location
 
 *** LIST OPERATOR OVERLOADS
 
@@ -142,9 +149,9 @@ class BaseList
 
     //////////////// CONSTRUCTORS
 
-    BaseList() : head(nullptr), tail(nullptr), length(0) {}
+    BaseList() : head(nullptr), tail(nullptr), listLength(0) {}
 
-    BaseList(const BaseList& source) : head(nullptr), tail(nullptr), length(0)
+    BaseList(const BaseList& source) : head(nullptr), tail(nullptr), listLength(0)
     {
         *this = source;
     }
@@ -162,7 +169,7 @@ class BaseList
         if (this != &rhs && rhs.head)
         {
             copy(head, tail, rhs.head, rhs.tail);
-            length = rhs.length;
+            listLength = rhs.listLength;
         }
 
         return *this;
@@ -188,11 +195,11 @@ class BaseList
     void removeAt(const size_t index)
     {
         //1) If the list is empty, or |index| specifiies a location beyond the list 
-        if (!head || index >= length) return;
+        if (!head || index >= listLength) return;
 
         //2) Recursively traverse to the |index| and remove that node
         removeAt(index, head);
-        --length;
+        --listLength;
     }
 
     //This overload allows for the caller to retrieve a copy of the removed data with |removed|
@@ -201,11 +208,11 @@ class BaseList
     void removeAt(const size_t index, T& removed)
     {
         //1) If the list is empty, or |index| specifies a location beyond the list 
-        if (!head || index >= length) return;
+        if (!head || index >= listLength) return;
 
         //2) Recursively traverse to the |index| and remove that node
         removeAt(index, head, removed);
-        --length;
+        --listLength;
     }
 
     //Attempt to remove any items that match the provided |removeKey|
@@ -240,7 +247,7 @@ class BaseList
     {
         delete head;
         head = tail = nullptr;
-        length = 0;
+        listLength = 0;
     }
 
     //True if the list is empty
@@ -250,9 +257,9 @@ class BaseList
     }
 
     //Returns the number of items currently in the list
-    size_t getLength() const
+    size_t length() const
     {
-        return length;
+        return listLength;
     }
 
     protected:
@@ -266,7 +273,7 @@ class BaseList
     Node<T>* tail;
 
     //The length of the list
-    size_t length;
+    size_t listLength;
     
     //////////////// PRIVATE FUNCTIONS 
 
@@ -421,7 +428,7 @@ class BaseList
             //Link any list that may exist beyond the removal
             head = hold;
 
-            --length;
+            --listLength;
 
             //1 will be added to the |remove| calling routine
             return 1;
@@ -489,7 +496,7 @@ class List : public BaseList<T>
             this->head = alloc;
         }
 
-        ++this->length;
+        ++this->listLength;
     }
 
     //Append |data| to the end of the list
@@ -508,7 +515,7 @@ class List : public BaseList<T>
             this->tail = alloc;
         }
 
-        ++this->length;
+        ++this->listLength;
     }
 
     //Insert into the list at the specified |index| with |head| being |index = 0|
@@ -517,13 +524,13 @@ class List : public BaseList<T>
         //1) If the list is empty or |index| is : >= |length| : insert at the end
         //  * Note that this means |tail| will never be modified in the recursive call : 2)
         //  * Instead this mutation will be delegated to |insertBack|
-        if (!this->head || index >= this->length) insertBack(data);
+        if (!this->head || index >= this->listLength) insertBack(data);
 
         //2) Recursively traverse to the |index| inserting |data| in a new node
         else
         {
             insertAt(index, data, this->head);
-            ++this->length;
+            ++this->listLength;
         }
     }
 
@@ -575,7 +582,7 @@ class SortedList : public BaseList<T>
     //Return the node index this data was inserted at
     size_t insert(const T& data)
     {
-        ++this->length;
+        ++this->listLength;
         return insert(data, this->head);
     }
 

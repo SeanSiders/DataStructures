@@ -19,7 +19,7 @@ int main()
         size_t length = sList.display();
         std::cout << "INSERT LOCATION : " << loc << "\nLENGTH : " << length << "\n\n";
 
-        if (length != sList.getLength()) std::cout << "LENGTH DOES NOT MATCH\n\n";
+        if (length != sList.length()) std::cout << "LENGTH DOES NOT MATCH\n\n";
 
         std::cin >> input;
     }
