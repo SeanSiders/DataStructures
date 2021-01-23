@@ -89,12 +89,12 @@ class Node
         *data = copy;
     }
 
-    //Compare this node's data this other's data
-    //True if this node's data is less than the other's
-    bool lessThan(Node* other) const
+    //Compare this node's data |compare|
+    //True if this node's data is greater than or equal to |compare|
+    bool greaterThanEq(const T& compare) const
     {
-        if (!data || !other || !other->data) return false;
-        return *data < *other->data;
+        if (!data) return false;
+        return *data >= compare;
     }
 
     //Compare this node's data to |key|
@@ -102,7 +102,7 @@ class Node
     template <typename K = T>
     bool equals(K& key)
     {
-        return *data == key;
+        return (data || *data == key);
     }
 
     //|next| getter
@@ -133,7 +133,7 @@ class Node
     T* data;
 };
 
-////////////////////////////// LINEAR LINKED LIST
+////////////////////////////// LIST ABSTRACT BASE
 
 template <typename T>
 class BaseList
@@ -141,38 +141,22 @@ class BaseList
     public:
 
     //////////////// CONSTRUCTORS
-    //////////////// DESTRUCTOR 
-    //////////////// PUBLIC FUNCTIONS 
 
-    protected:
+    BaseList() : head(nullptr), tail(nullptr), length(0) {}
 
-    //////////////// DATA 
-
-    //////////////// PRIVATE FUNCTIONS 
-};
-
-template <typename T>
-class List : public BaseList<T>
-{
-    public:
-
-    //////////////// CONSTRUCTORS
-
-    List() : head(nullptr), tail(nullptr), length(0) {}
-
-    List(const List& source) : head(nullptr), tail(nullptr), length(0)
+    BaseList(const BaseList& source) : head(nullptr), tail(nullptr), length(0)
     {
         *this = source;
     }
 
     //////////////// DESTRUCTOR 
 
-    ~List() { clear(); }
+    ~BaseList() { clear(); }
 
     //////////////// OPERATOR OVERLOADS
 
     //Makes a complete deep copy of |rhs| into this list
-    List& operator=(const List& rhs)
+    BaseList& operator=(const BaseList& rhs)
     {
         //If this is not self assignment, or |rhs| is not empty
         if (this != &rhs && rhs.head)
@@ -184,6 +168,10 @@ class List : public BaseList<T>
         return *this;
     }
 
+    //////////////// PURE FUNCTION
+
+    virtual size_t insert(const T& data) = 0;
+
     //////////////// PUBLIC FUNCTIONS 
 
     //Display the contents of the list from |head| to |tail|
@@ -194,60 +182,6 @@ class List : public BaseList<T>
         if (!head) return 0;
 
         return display(out, head);
-    }
-
-    //Insert |data| at the front of the list
-    void insertFront(const T& data)
-    {
-        //Allocate node and deep copy in |data|
-        Node<T>* alloc = new Node<T>(data);
-
-        //1) Empty list
-        if (!head) head = tail = alloc;
-
-        //2) Head insertion
-        else
-        {
-            alloc->setNext(head);
-            head = alloc;
-        }
-
-        ++length;
-    }
-
-    //Append |data| to the end of the list
-    void insertBack(const T& data)
-    {
-        //Allocate node and deep copy in |data|
-        Node<T>* alloc = new Node<T>(data);
-
-        //1) Empty list 
-        if (!head) head = tail = alloc;
-
-        //2) Append the new node as the new tail of the list
-        else
-        {
-            tail->setNext(alloc);
-            tail = alloc;
-        }
-
-        ++length;
-    }
-
-    //Insert into the list at the specified |index| with |head| being |index = 0|
-    void insertAt(const size_t index, const T& data)
-    {
-        //1) If the list is empty or |index| is : >= |length| : insert at the end
-        //  * Note that this means |tail| will never be modified in the recursive call : 2)
-        //  * Instead this mutation will be delegated to |insertBack|
-        if (!head || index >= length) insertBack(data);
-
-        //2) Recursively traverse to the |index| inserting |data| in a new node
-        else
-        {
-            insertAt(index, data, head);
-            ++length;
-        }
     }
 
     //Remove an item at the specified |index| with |head| being |index = 0|
@@ -293,7 +227,7 @@ class List : public BaseList<T>
     //Insert any matching items into the provided |retrieveList|
     //Return the number of items retrieved, which will consequently be the length of |retrieveList|
     template <typename K = T>
-    size_t retrieve(const K& retrieveKey, List<T>& retrieveList) const
+    size_t retrieve(const K& retrieveKey, BaseList<T>& retrieveList) const
     {
         //Empty list
         if (!head) return 0;
@@ -321,7 +255,7 @@ class List : public BaseList<T>
         return length;
     }
 
-    private:
+    protected:
 
     //////////////// DATA 
 
@@ -370,30 +304,6 @@ class List : public BaseList<T>
         out << " -> ";
 
         return display(out, head->_next()) + 1;
-    }
-
-    //Traverse with |head| until |currentIndex| is equivalent to |insertIndex|
-    //Insert |data| at this location in the list
-    //|currentIndex = 0| reflects the default starting node index of this procedure : (this->head)
-    void insertAt(const size_t insertIndex, const T& data, Node<T>*& head, size_t currentIndex = 0)
-    {
-        //Insert location
-        if (currentIndex == insertIndex)
-        {
-            //Hold onto the list that exists beyond this insertion
-            Node<T>* hold = head;
-
-            //Allocate a new node, deep copying in |data|
-            head = new Node<T>(data);
-
-            //Link the list that exists beyond this insertion
-            head->setNext(hold);
-
-            return;
-        }
-        
-        //Traverse to next node, incrementing |currentIndex|
-        insertAt(insertIndex, data, head->_next(), currentIndex + 1);
     }
 
     //Traverse with |head| until |currentIndex| is equivalent to |removeIndex|
@@ -524,7 +434,7 @@ class List : public BaseList<T>
     //Insert any matching items into the provided |retrieveList|
     //Return the number of items retrieved, which will consequently be the length of |retrieveList|
     template <typename K = T>
-    size_t retrieve(const K& retrieveKey, List<T>& retrieveList, Node<T>* head) const
+    size_t retrieve(const K& retrieveKey, BaseList<T>& retrieveList, Node<T>* head) const
     {
         //End of the list
         if (!head) return 0;
@@ -540,6 +450,166 @@ class List : public BaseList<T>
         }
 
         return retrieve(retrieveKey, retrieveList, head->_next());
+    }
+};
+
+////////////////////////////// LINEAR LINKED LIST 
+
+template <typename T>
+class List : public BaseList<T>
+{
+    public:
+
+    //////////////// CONSTRUCTORS
+
+    List() {}
+    List(const BaseList<T>& source) : BaseList<T>(source) {}
+
+    //////////////// PUBLIC FUNCTIONS 
+
+    size_t insert(const T& data)
+    {
+        insertFront(data);
+        return 0;
+    }
+
+    //Insert |data| at the front of the list
+    void insertFront(const T& data)
+    {
+        //Allocate node and deep copy in |data|
+        Node<T>* alloc = new Node<T>(data);
+
+        //1) Empty list
+        if (!this->head) this->head = this->tail = alloc;
+
+        //2) Head insertion
+        else
+        {
+            alloc->setNext(this->head);
+            this->head = alloc;
+        }
+
+        ++this->length;
+    }
+
+    //Append |data| to the end of the list
+    void insertBack(const T& data)
+    {
+        //Allocate node and deep copy in |data|
+        Node<T>* alloc = new Node<T>(data);
+
+        //1) Empty list 
+        if (!this->head) this->head = this->tail = alloc;
+
+        //2) Append the new node as the new tail of the list
+        else
+        {
+            this->tail->setNext(alloc);
+            this->tail = alloc;
+        }
+
+        ++this->length;
+    }
+
+    //Insert into the list at the specified |index| with |head| being |index = 0|
+    void insertAt(const size_t index, const T& data)
+    {
+        //1) If the list is empty or |index| is : >= |length| : insert at the end
+        //  * Note that this means |tail| will never be modified in the recursive call : 2)
+        //  * Instead this mutation will be delegated to |insertBack|
+        if (!this->head || index >= this->length) insertBack(data);
+
+        //2) Recursively traverse to the |index| inserting |data| in a new node
+        else
+        {
+            insertAt(index, data, this->head);
+            ++this->length;
+        }
+    }
+
+    private:
+
+    //////////////// PRIVATE FUNCTIONS 
+
+    //Traverse with |head| until |currentIndex| is equivalent to |insertIndex|
+    //Insert |data| at this location in the list
+    //|currentIndex = 0| reflects the default starting node index of this procedure : (this->head)
+    void insertAt(const size_t insertIndex, const T& data, Node<T>*& head, size_t currentIndex = 0)
+    {
+        //Insert location
+        if (currentIndex == insertIndex)
+        {
+            //Hold onto the list that exists beyond this insertion
+            Node<T>* hold = head;
+
+            //Allocate a new node, deep copying in |data|
+            head = new Node<T>(data);
+
+            //Link the list that exists beyond this insertion
+            head->setNext(hold);
+
+            return;
+        }
+        
+        //Traverse to next node, incrementing |currentIndex|
+        insertAt(insertIndex, data, head->_next(), currentIndex + 1);
+    }
+};
+
+////////////////////////////// SORTED LINEAR LINKED LIST 
+//This list will automatically sort incoming data from least at |head| to greatest at |tail|
+
+template <typename T>
+class SortedList : public BaseList<T>
+{
+    public:
+
+    //////////////// CONSTRUCTORS
+
+    SortedList() {}
+    SortedList(const BaseList<T>& source) : BaseList<T>(source) {}
+
+    //////////////// PUBLIC FUNCTIONS 
+
+    //Insert |data| in sorted order
+    //Return the node index this data was inserted at
+    size_t insert(const T& data)
+    {
+        ++this->length;
+        return insert(data, this->head);
+    }
+
+    private:
+
+    //////////////// PRIVATE FUNCTIONS 
+
+    //Traverse with |head| until the sorted location is found to insert |data|
+    size_t insert(const T& data, Node<T>*& head)
+    {
+        //End of list, or list is empty
+        if (!head)
+        {
+            head = new Node<T>(data);
+            this->tail = head;
+            return 0;
+        }
+        
+        //Sorted location found
+        if (head->greaterThanEq(data))
+        {
+            //Hold onto the rest of the list
+            Node<T>* hold = head;
+
+            //Allocate a new node, effectively setting the previous node's next pointer
+            head = new Node<T>(data);
+
+            //Link up the rest of the list
+            head->setNext(hold);
+
+            return 0;
+        }
+
+        return insert(data, head->_next()) + 1;
     }
 };
 

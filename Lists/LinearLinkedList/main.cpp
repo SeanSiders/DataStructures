@@ -9,21 +9,24 @@
 int main()
 {
 
-    lll::List<int> list;
+    lll::SortedList<int> sList;
 
-    list.insertBack(33);
-    list = list;
+    int input = 99;
+
+    while (input != -1)
+    {
+        size_t loc = sList.insert(input);
+        size_t length = sList.display();
+        std::cout << "INSERT LOCATION : " << loc << "\nLENGTH : " << length << "\n\n";
+
+        if (length != sList.getLength()) std::cout << "LENGTH DOES NOT MATCH\n\n";
+
+        std::cin >> input;
+    }
+
+    lll::List<int> list(sList);
+
     list.display();
-
-    list = list;
-
-    lll::List<int> copy(list);
-
-    copy.display();
-    copy.clear();
-
-    copy = list;
-    copy.display();
 
     return 0;
 }
