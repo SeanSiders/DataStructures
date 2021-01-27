@@ -49,8 +49,18 @@ that are managed by this list.
 
 namespace lll {
 
+//////////////// FORWARD DECLARATIONS
+
+template <typename T>
+class BaseList;
+
 template <typename T>
 class SortedList;
+
+//////////////// GLOBAL OPERATOR OVERLOAD (for display)
+
+template <typename T>
+std::ostream& operator<<(std::ostream&, const BaseList<T>&);
 
 ////////////////////////////// NODE
 
@@ -96,7 +106,7 @@ class Node
     //Copy |data| into |copy| with the simple assignment operator
     void copyData(T& copy)
     {
-        *data = copy;
+        copy = *data;
     }
 
     //Compare this node's data |compare|
@@ -112,7 +122,7 @@ class Node
     template <typename K = T>
     bool equals(K& key)
     {
-        return (data || *data == key);
+        return (data && *data == key);
     }
 
     //|next| getter
@@ -165,20 +175,11 @@ class BaseList
 
     //////////////// OPERATOR OVERLOADS
 
-    /*
-    //Makes a complete deep copy of |rhs| into this list
-    BaseList& operator=(const BaseList& rhs)
+    friend std::ostream& operator<<(std::ostream& out, const BaseList& list)
     {
-        //If this is not self assignment, or |rhs| is not empty
-        if (this != &rhs && rhs.head)
-        {
-            copy(head, tail, rhs.head, rhs.tail);
-            listLength = rhs.listLength;
-        }
-
-        return *this;
+        list.display(out);
+        return out;
     }
-    */
 
     //////////////// PURE FUNCTION
 
@@ -204,7 +205,6 @@ class BaseList
 
         //2) Recursively traverse to the |index| and remove that node
         removeAt(index, head);
-        --listLength;
     }
 
     //This overload allows for the caller to retrieve a copy of the removed data with |removed|
@@ -217,7 +217,6 @@ class BaseList
 
         //2) Recursively traverse to the |index| and remove that node
         removeAt(index, head, removed);
-        --listLength;
     }
 
     //Attempt to remove any items that match the provided |removeKey|
@@ -227,12 +226,21 @@ class BaseList
     size_t remove(const K& removeKey)
     {
         //Empty list
-        if (!head) return false;
+        if (!head) return 0;
 
-        //Used in the recursive function to reset tail if it is removed
-        bool resetTail = false;
+        return remove(removeKey, head);
+    }
 
-        return remove(removeKey, head, resetTail);
+    //Attempt to retrieve the |n|th item that matches the provided |retrieveKey|
+    //|n| will default to the 1st occurence
+    //Return true if a retrieve was successful
+    template <typename K = T>
+    bool retrieve(const K& retrieveKey, T& retrieved, size_t n = 1) const
+    {
+        //Empty list or |n| was not semantically valid input
+        if (!head || n > listLength) return false;
+
+        return retrieve(retrieveKey, retrieved, n, head);
     }
 
     //Attempt to retrieve any items that match the provided |retrieveKey|
@@ -280,7 +288,7 @@ class BaseList
     //The length of the list
     size_t listLength;
     
-    //////////////// PRIVATE FUNCTIONS 
+    //////////////// PROTECTED FUNCTIONS 
 
     //WRAPPER
     //Check if a list already exists, if so, deallocate before recursive copy
@@ -333,89 +341,101 @@ class BaseList
     //|currentIndex = 0| reflects the default starting node index of this procedure : (this->head)
     //* In the case that tail is being removed, tail will be reset as the stack unwinds from the recursive calls
     //* This is specified with the bool return value of the function
-    bool removeAt(const size_t removeIndex, Node<T>*& head, size_t currentIndex = 0)
+    void removeAt(const size_t removeIndex, Node<T>*& head, size_t currentIndex = 0)
     {
         //Remove location
         if (currentIndex == removeIndex)
         {
-            //If tail is being removed, this will allow for tail to be reset in head recursion
-            bool resetTail = (head == tail);
+            //Remove the node at this index
+            //If tail is the node being removed it will be set to null here
+            remove(head);
 
-            //Hold onto any list that exists beyond this insertion
-            Node<T>* hold = head->_next();
-
-            //Detach and deallocate the node to remove from the list
-            head->setNext(nullptr);
-            delete head;
-
-            //Link any list that may exist beyond the removal
-            head = hold;
-
-            return resetTail;
+            return;
         }
 
         //Traverse to next node, incrementing |currentIndex|
         //This will return true in the instance that tail is removed from the list
-        if(removeAt(removeIndex, head->_next(), currentIndex + 1)) tail = head;
-        
-        //Continue to return false so tail is only reset once
-        return false;
+        removeAt(removeIndex, head->_next(), currentIndex + 1);
+
+        //If the |tail| was removed it will be null in the first occurence of head recursion
+        //|tail| will need to be reset to the new list tail here
+        if (!tail) tail = head;
     }
 
     //This recursive overload allows the client to retrieve a copy of the removed data with |removed|
-    bool removeAt(const size_t removeIndex, Node<T>*& head, T& removed, size_t currentIndex = 0)
+    void removeAt(const size_t removeIndex, Node<T>*& head, T& removed, size_t currentIndex = 0)
     {
         //Remove location
         if (currentIndex == removeIndex)
         {
-            //If tail is being removed, this will allow for tail to be reset in head recursion
-            bool resetTail = (head == tail);
-
-            //Hold onto any list that exists beyond this insertion
-            Node<T>* hold = head->_next();
-
-            //Copy the data to remove into the caller's supplied object |removed|
+            //Copy over the data that will be removed
             head->copyData(removed);
 
-            //Detach and deallocate the node to remove from the list
-            head->setNext(nullptr);
-            delete head;
+            //Remove the node at this index
+            //If tail is the node being removed it will be set to null here
+            remove(head);
 
-            //Link any list that may exist beyond the removal
-            head = hold;
-
-            return resetTail;
+            return;
         }
 
         //Traverse to next node, incrementing |currentIndex|
         //This will return true in the instance that tail is removed from the list
-        if (removeAt(removeIndex, head->_next(), removed, currentIndex + 1)) tail = head;
-        
-        //Continue to return false so tail is only reset once
-        return false;
+        removeAt(removeIndex, head->_next(), removed, currentIndex + 1);
+
+        //If the |tail| was removed it will be null in the first occurence of head recursion
+        //|tail| will need to be reset to the new list tail here
+        if (!tail) tail = head;
+    }
+
+    //Remove |toRemove| and link up the remaining list
+    //If the tail of the list is being removed, it will be set to null here
+    void remove(Node<T>*& toRemove)
+    {
+        //If the list tail is being removed, set the true tail to null
+        //|tail| is reset in head recursion
+        if (toRemove == tail)
+        {
+            delete toRemove;
+            toRemove = tail = nullptr;
+        }
+
+        //The list tail is not being removed
+        else
+        {
+            //Hold onto any list that may exist beyond the removal
+            Node<T>* hold = toRemove->_next();
+
+            //Detach and deallocate the node to remove from the list
+            toRemove->setNext(nullptr);
+            delete toRemove;
+
+            //Link any list that may exist beyond the removal
+            toRemove = hold;
+        }
+
+        --listLength;
     }
 
     //Traverse with |head| removing any nodes that contain matching data to |removeKey|
     //Return the number of removals that occured
     //If tail is removed |resetTail| is set to true, and tail will be reassigned in head recursion
     template <typename K = T>
-    size_t remove(const K& removeKey, Node<T>*& head, bool& resetTail)
+    size_t remove(const K& removeKey, Node<T>*& head)
     {
         if (!head) return 0;
 
         //The number of removals to return
         size_t removeCount = 0;
 
-        //Remove and increment |removeCount| if data matches, traverse to the next node
-        if (removeCheck(removeKey, head, resetTail)) removeCount = remove(removeKey, head, resetTail) + 1;
-        else removeCount = remove(removeKey, head->_next(), resetTail);
+        //If the item was removed, increment by 1 and head will already be set to the next consecutive node
+        if (removeIfMatched(removeKey, head)) removeCount += remove(removeKey, head) + 1;
 
-        //If the tail was removed, it will need to be reset to the first non-null head that occurs here
-        if (resetTail && head)
-        {
-            tail = head;
-            resetTail = false;
-        }
+        //Otherwise continue with traversal
+        else removeCount = remove(removeKey, head->_next());
+
+        //If the |tail| was removed it will be null in the first occurence of head recursion
+        //|tail| will need to be reset to the new list tail here
+        if (!tail) tail = head;
 
         return removeCount;
     }
@@ -423,33 +443,67 @@ class BaseList
     //Compare |removeKey| with head's data
     //If they match, remove the current node from the list
     //If the removal occurs, return true
-    //|restTail| will only be set to true if the tail is the node being removed
     template <typename K = T>
-    size_t removeCheck(const K& removeKey, Node<T>*& head, bool& resetTail)
+    bool removeIfMatched(const K& removeKey, Node<T>*& head)
     {
         //If the data matches
         if (head->equals(removeKey))
         {
-            //Set to true if tail is being removed
-            resetTail = (head == tail);
+            //If the list tail is being removed, set the true tail to null
+            //|tail| is reset in head recursion
+            if (head == tail)
+            {
+                delete head;
+                head = tail = nullptr;
+            }
 
-            //Hold onto any list that may exist beyond the removal
-            Node<T>* hold = head->_next();
+            //The list tail is not being removed
+            else
+            {
+                //Hold onto any list that may exist beyond the removal
+                Node<T>* hold = head->_next();
 
-            //Detach and deallocate the node to remove from the list
-            head->setNext(nullptr);
-            delete head;
+                //Detach and deallocate the node to remove from the list
+                head->setNext(nullptr);
+                delete head;
 
-            //Link any list that may exist beyond the removal
-            head = hold;
+                //Link any list that may exist beyond the removal
+                head = hold;
+            }
 
             --listLength;
 
             //1 will be added to the |remove| calling routine
-            return 1;
+            return true;
         }
 
-        return 0;
+        return false;
+    }
+
+    //Traverse the list with |head|
+    //Decrement |n| for each matching item in the list
+    //The |n|th occurence to copy into |retrieved| will happen when |n| is 0
+    //Return false if the |n|th matching occurence does not exist in the list
+    template <typename K = T>
+    bool retrieve(const K& retrieveKey, T& retrieved, size_t& n, Node<T>* head) const
+    {
+        //End of list, no match on |n|th occurence
+        if (!head) return false;
+
+        //If a match is found
+        if (head->equals(retrieveKey))
+        {
+            --n;
+
+            //If n is 0, this match is the item to retrieve
+            if (0 == n)
+            {
+                head->copyData(retrieved);
+                return true;
+            }
+        }
+
+        return retrieve(retrieveKey, retrieved, n, head->_next());
     }
 
     //Traverse the list with |head| comparing all items to |retrieveKey|
@@ -465,7 +519,7 @@ class BaseList
         if (head->equals(retrieveKey))
         {
             //Insert it at the end of the retrieve list
-            retrieveList.insertBack(*head->_data());
+            retrieveList.insert(*head->_data());
 
             //Increment return value by 1
             return retrieve(retrieveKey, retrieveList, head->_next()) + 1;
@@ -518,7 +572,7 @@ class List : public BaseList<T>
 
     size_t insert(const T& data)
     {
-        insertFront(data);
+        insertBack(data);
         return 0;
     }
 
@@ -576,9 +630,9 @@ class List : public BaseList<T>
         }
     }
 
-    private:
+    protected:
 
-    //////////////// PRIVATE FUNCTIONS 
+    //////////////// PROTECTED FUNCTIONS 
 
     //Traverse with |head| until |currentIndex| is equivalent to |insertIndex|
     //Insert |data| at this location in the list
@@ -669,9 +723,9 @@ class SortedList : public BaseList<T>
         return insert(data, this->head);
     }
 
-    private:
+    protected:
 
-    //////////////// PRIVATE FUNCTIONS 
+    //////////////// PROTECTED FUNCTIONS 
 
     //Traverse with |head| until the sorted location is found to insert |data|
     size_t insert(const T& data, Node<T>*& head)
